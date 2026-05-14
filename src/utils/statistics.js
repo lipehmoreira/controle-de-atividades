@@ -19,9 +19,11 @@ export function countByStatus(items) {
   const counts = {}
   items.forEach(item => {
     const s = (item.status || 'Desconhecido').trim()
-    counts[s] = (counts[s] || 0) ++
+    counts[s] = (counts[s] || 0) + 1
   })
-  return counts
+  return Object.entries(counts)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
 }
 
 /**

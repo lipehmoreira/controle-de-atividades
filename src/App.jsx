@@ -6,7 +6,8 @@ import {
 } from 'lucide-react'
 import {
   parseXLSX, parseCSV, normalizeKeys, autoMapColumns, normalizeRating,
-  normalizeValue, normalizeStatus, formatHours, formatNumber
+  normalizeValue, normalizeStatus, formatHours, formatNumber,
+  detectCategory, normalizeString
 } from './utils/parsers'
 import { generalStats, averageRating, countByStatus, topByRating, groupCount, groupByMonth } from './utils/statistics'
 import StatCard from './components/StatCard'
