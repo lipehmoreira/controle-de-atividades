@@ -7,13 +7,27 @@ import Papa from 'papaparse'
  * remove R$, %, espaços extras, etc.
  */
 export function normalizeValue(val) {
-  if (val === null || val === undefined) return ''
+  if (val === null || val === undefined) return 0
+  if (typeof val === 'number') return val
+  
   const str = String(val).trim()
-  // Converte moeda "R$ 1.234,56" ou "1.234,56" para número
-  const cleaned = str
-    .replace(/[R$\s]/g, '')
-    .replace(/\./g, '')
-    .replace(',', '.')
+  if (!str) return 0
+
+  // Se for tempo HH:MM:SS ou MM:SS
+  if (/^\d{1,3}:\d{2}(:\d{2})?$/.test(str)) {
+    const parts = str.split(':').map(Number)
+    return parts[0] * 60 + parts[1] // Retorna em minutos
+  }
+
+  let cleaned = str.replace(/[R$\s]/g, '')
+  
+  // Trata separadores
+  if (cleaned.includes(',') && cleaned.includes('.')) {
+    cleaned = cleaned.replace(/\./g, '').replace(',', '.')
+  } else if (cleaned.includes(',')) {
+    cleaned = cleaned.replace(',', '.')
+  }
+  
   const num = parseFloat(cleaned)
   return isNaN(num) ? str : num
 }
@@ -28,13 +42,13 @@ export function normalizeRating(val) {
 }
 
 /**
- * Normaliza string: capitalize cada palavra.
+ * Normaliza string: capitalize cada palavra, lidando corretamente com acentos.
  */
 export function normalizeString(str) {
   if (!str) return ''
   return String(str).trim()
     .replace(/\s+/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .replace(/(^|\s)\S/g, (c) => c.toUpperCase())
 }
 
 /**
@@ -43,10 +57,10 @@ export function normalizeString(str) {
 export function normalizeStatus(val) {
   if (!val) return 'Em andamento'
   const s = String(val).trim().toLowerCase()
-  if (s.includes('finaliz') || s.includes('complet') || s === 'concluído' || s === 'concluido') return 'Finalizado'
-  if (s.includes('em and') || s.includes('jogan') || s.includes('assist') || s.includes('lendo') || s.includes('em progres')) return 'Em andamento'
-  if (s.includes('abandon') || s.includes('drop')) return 'Abandonado'
-  if (s.includes('pretend') || s.includes('quero') || s.includes('planej')) return 'Planejado'
+  if (s.includes('finaliz') || s.includes('complet') || s === 'concluído' || s === 'concluido' || s === 'assistido' || s === 'lido' || s === 'jogado') return 'Finalizado'
+  if (s.includes('em and') || s.includes('assistindo') || s.includes('lendo') || s.includes('jogando') || s.includes('em progres')) return 'Em andamento'
+  if (s.includes('abandon') || s.includes('drop') || s.includes('pausad')) return 'Abandonado'
+  if (s.includes('pretend') || s.includes('quero') || s.includes('planej') || s.includes('lista')) return 'Planejado'
   return String(val).trim()
 }
 
@@ -121,12 +135,18 @@ export function parseXLSX(file) {
     reader.onload = (e) => {
       try {
         const data = new Uint8Array(e.target.result)
-        const workbook = XLSX.read(data, { type: 'array' })
+        const workbook = XLSX.read(data, { type: 'array', cellDates: true })
         const result = {}
         workbook.SheetNames.forEach((sheetName) => {
           const worksheet = workbook.Sheets[sheetName]
-          const json = XLSX.utils.sheet_to_json(worksheet, { defval: '' })
-          result[sheetName] = json
+          let json = XLSX.utils.sheet_to_json(worksheet, { defval: '' })
+          
+          // Filter out completely empty rows
+          json = json.filter(row => {
+            return Object.keys(row).some(k => k !== '__rowNum__' && String(row[k]).trim() !== '')
+          })
+          
+          if (json.length > 0) result[sheetName] = json
         })
         resolve(result)
       } catch (err) {
@@ -205,7 +225,8 @@ export function autoMapColumns(rows, category) {
       genero: ['genero', 'gênero', 'generos', 'gêneros', 'genre'],
       duracao: ['duração', 'duracao', 'duracao_min', 'duration', 'runtime', 'duração_minutos'],
       nota: ['nota', 'rating', 'avaliação', 'avaliacao', 'score', 'nota10'],
-      assistido_em: ['assistido_em', 'assistido', 'data', 'date', 'watched_in', 'when', 'ano', 'mes', 'year']
+      assistido_em: ['assistido_em', 'assistido', 'data', 'date', 'watched_in', 'when', 'ano', 'mes', 'year'],
+      local: ['local', 'onde', 'onde_assistiu', 'cinema', 'plataforma', 'serviço']
     },
     series: {
       nome: ['nome', 'série', 'serie', 'series', 'titulo', 'título', 'name', 'title', 'nome_da_serie', 'obra'],

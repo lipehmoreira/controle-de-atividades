@@ -359,8 +359,8 @@ function JogosDashboard({ data }) {
   const totalHoras = normalizedItems.reduce((s, i) => s + (i.tempo_h || 0), 0)
   const finishedCount = normalizedItems.filter(i => i.status === 'Finalizado').length
   const avgNota = averageRating(normalizedItems)
-  const generos = groupCount(normalizedItems, 'genero')
-  const plataformas = groupCount(normalizedItems, 'plataforma')
+  const generos = groupCount(normalizedItems, 'genero').filter(g => g.name !== 'N/A')
+  const plataformas = groupCount(normalizedItems, 'plataforma').filter(p => p.name !== 'N/A')
   const topJogos = topByRating(normalizedItems, 5)
 
   return (
@@ -432,13 +432,15 @@ function FilmesDashboard({ data }) {
     genero: normalizeString(item.genero || item.generos || item.Gênero || 'N/A'),
     duracao: Number(normalizeValue(item.duracao || item.duração || item.Duração || item.duracao_min || 0)),
     assistido_em: item.assistido_em || item.data || item.Assistido_em || item.date || '',
+    local: normalizeString(item.local || item.onde || item.onde_assistiu || item.cinema || 'N/A')
   }))
 
   const totalDuracao = normalizedItems.reduce((s, i) => s + (i.duracao || 0), 0)
   const finishedCount = normalizedItems.filter(i => normalizeStatus(i.status) === 'Finalizado').length
   const avgNota = averageRating(normalizedItems)
-  const diretores = groupCount(normalizedItems, 'direcao')
-  const generos = groupCount(normalizedItems, 'genero')
+  const diretores = groupCount(normalizedItems, 'direcao').filter(d => d.name !== 'N/A')
+  const generos = groupCount(normalizedItems, 'genero').filter(g => g.name !== 'N/A')
+  const locais = groupCount(normalizedItems, 'local').filter(l => l.name !== 'N/A')
   const topFilmes = topByRating(normalizedItems, 5)
   const porMes = groupByMonth(normalizedItems, 'assistido_em')
 
@@ -456,7 +458,11 @@ function FilmesDashboard({ data }) {
           <BarChartWidget data={diretores.slice(0, 10)} dataKey="count" labelKey="name" title="🎬 Diretores Favoritos" color="#a78bfa" />
         </div>
         <div>
-          <PieChartWidget data={countByStatus(normalizedItems)} dataKey="count" labelKey="name" title="📊 Status" />
+          {locais.length > 0 ? (
+            <PieChartWidget data={locais} dataKey="count" labelKey="name" title="📍 Onde Assistiu" />
+          ) : (
+            <PieChartWidget data={countByStatus(normalizedItems)} dataKey="count" labelKey="name" title="📊 Status" />
+          )}
         </div>
       </div>
 
@@ -516,7 +522,7 @@ function SeriesDashboard({ data }) {
   const totalEpisodios = normalizedItems.reduce((s, i) => s + (i.episodios || 0), 0)
   const finishedCount = normalizedItems.filter(i => i.status === 'Finalizado').length
   const avgNota = averageRating(normalizedItems)
-  const generos = groupCount(normalizedItems, 'genero')
+  const generos = groupCount(normalizedItems, 'genero').filter(g => g.name !== 'N/A')
   const topSeries = topByRating(normalizedItems, 5)
   const maratonadas = normalizedItems.filter(i => i.status === 'Finalizado' && i.episodios > 0).sort((a, b) => (b.episodios || 0) - (a.episodios || 0)).slice(0, 5)
 
@@ -606,7 +612,7 @@ function AnimesDashboard({ data }) {
   const totalEpisodios = normalizedItems.reduce((s, i) => s + (i.episodios || 0), 0)
   const finishedCount = normalizedItems.filter(i => i.status === 'Finalizado').length
   const avgNota = averageRating(normalizedItems)
-  const generos = groupCount(normalizedItems, 'genero')
+  const generos = groupCount(normalizedItems, 'genero').filter(g => g.name !== 'N/A')
   const topAnimes = topByRating(normalizedItems, 5)
 
   return (
@@ -677,9 +683,9 @@ function LivrosDashboard({ data }) {
   const totalPaginas = normalizedItems.reduce((s, i) => s + (i.paginas || 0), 0)
   const finishedCount = normalizedItems.filter(i => i.status === 'Finalizado').length
   const avgNota = averageRating(normalizedItems)
-  const autores = groupCount(normalizedItems, 'autor')
-  const modosLeitura = groupCount(normalizedItems, 'modo_leitura')
-  const generos = groupCount(normalizedItems, 'genero')
+  const autores = groupCount(normalizedItems, 'autor').filter(a => a.name !== 'N/A')
+  const modosLeitura = groupCount(normalizedItems, 'modo_leitura').filter(m => m.name !== 'N/A')
+  const generos = groupCount(normalizedItems, 'genero').filter(g => g.name !== 'N/A')
   const topLivros = topByRating(normalizedItems, 5)
 
   return (
@@ -899,16 +905,19 @@ export default function App() {
       const finalData = {}
       for (const sheet in parsed) {
         const normalized = normalizeKeys(parsed[sheet])
-        let detectedCat = detectCategory(normalized)
         
-        // Se a detecção falhar, tenta pelo nome da aba
+        let detectedCat = 'desconhecido'
+        // 1. Tenta pelo nome da aba primeiro (heurística mais forte)
+        const s = sheet.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        if (s.includes('jogo') || s.includes('game')) detectedCat = 'jogos'
+        else if (s.includes('filme') || s.includes('movie')) detectedCat = 'filmes'
+        else if (s.includes('serie')) detectedCat = 'series'
+        else if (s.includes('anime')) detectedCat = 'animes'
+        else if (s.includes('livro') || s.includes('book')) detectedCat = 'livros'
+        
+        // 2. Se não encontrou pelo nome, usa as colunas
         if (detectedCat === 'desconhecido') {
-          const s = sheet.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-          if (s.includes('jogo') || s.includes('game')) detectedCat = 'jogos'
-          else if (s.includes('filme') || s.includes('movie')) detectedCat = 'filmes'
-          else if (s.includes('serie')) detectedCat = 'series'
-          else if (s.includes('anime')) detectedCat = 'animes'
-          else if (s.includes('livro') || s.includes('book')) detectedCat = 'livros'
+          detectedCat = detectCategory(normalized)
         }
 
         const mappedData = autoMapColumns(normalized, detectedCat)

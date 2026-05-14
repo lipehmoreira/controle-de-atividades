@@ -106,17 +106,25 @@ export function groupByMonth(items, dateField) {
 
 function extractMonthYear(d) {
   if (!d) return 'Desconhecido'
-  const s = String(d).trim()
-  // Tenta parsear "MM/YYYY", "YYYY-MM-DD", "DD/MM/YYYY", etc.
-  let date = new Date(s)
-  if (isNaN(date.getTime())) {
-    // Tenta formato MM/YYYY
-    const parts = s.split('/')
-    if (parts.length === 2) {
-      date = new Date(Number(parts[1]), Number(parts[0]) - 1)
+  
+  let date;
+  if (d instanceof Date) {
+    date = d;
+  } else {
+    const s = String(d).trim()
+    date = new Date(s)
+    if (isNaN(date.getTime())) {
+      // Tenta formato MM/YYYY ou DD/MM/YYYY
+      const parts = s.split('/')
+      if (parts.length === 2) {
+        date = new Date(Number(parts[1]), Number(parts[0]) - 1)
+      } else if (parts.length === 3) {
+        date = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]))
+      }
+      if (isNaN(date.getTime())) return s
     }
-    if (isNaN(date.getTime())) return s
   }
+
   const months = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                    'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
   return `${months[date.getMonth()]} ${date.getFullYear()}`
@@ -140,17 +148,21 @@ export function extractAvailableYears(data) {
       data[cat].forEach(item => {
         const dStr = item.data || item.assistido_em || item.date || item.terminado_em || item.concluido_em || item.ano || item.year || ''
         if (dStr) {
-          let date = new Date(dStr)
-          if (!isNaN(date.getTime())) {
-            years.add(date.getFullYear())
+          if (dStr instanceof Date) {
+            years.add(dStr.getFullYear())
           } else {
-            const parts = String(dStr).split('/')
-            if (parts.length === 2) {
-              years.add(Number(parts[1]))
-            } else if (parts.length === 3) {
-              years.add(Number(parts[2]))
-            } else if (!isNaN(Number(dStr)) && dStr.toString().length === 4) {
-              years.add(Number(dStr))
+            let date = new Date(dStr)
+            if (!isNaN(date.getTime())) {
+              years.add(date.getFullYear())
+            } else {
+              const parts = String(dStr).split('/')
+              if (parts.length === 2) {
+                years.add(Number(parts[1]))
+              } else if (parts.length === 3) {
+                years.add(Number(parts[2]))
+              } else if (!isNaN(Number(dStr)) && dStr.toString().length === 4) {
+                years.add(Number(dStr))
+              }
             }
           }
         }
@@ -166,16 +178,21 @@ export function filterDataByYear(data, year) {
     if (Array.isArray(data[cat])) {
       filtered[cat] = data[cat].filter(item => {
         const dStr = item.data || item.assistido_em || item.date || item.terminado_em || item.concluido_em || item.ano || item.year || ''
-        if (!dStr) return false // se não tem data, não tem como filtrar, ou assume true? Vamos ocultar se não bate com o ano
+        if (!dStr) return false
+        
         let itemYear = null
-        let date = new Date(dStr)
-        if (!isNaN(date.getTime())) {
-          itemYear = date.getFullYear()
+        if (dStr instanceof Date) {
+          itemYear = dStr.getFullYear()
         } else {
-          const parts = String(dStr).split('/')
-          if (parts.length === 2) itemYear = Number(parts[1])
-          else if (parts.length === 3) itemYear = Number(parts[2])
-          else if (!isNaN(Number(dStr)) && dStr.toString().length === 4) itemYear = Number(dStr)
+          let date = new Date(dStr)
+          if (!isNaN(date.getTime())) {
+            itemYear = date.getFullYear()
+          } else {
+            const parts = String(dStr).split('/')
+            if (parts.length === 2) itemYear = Number(parts[1])
+            else if (parts.length === 3) itemYear = Number(parts[2])
+            else if (!isNaN(Number(dStr)) && dStr.toString().length === 4) itemYear = Number(dStr)
+          }
         }
         return itemYear === Number(year)
       })
