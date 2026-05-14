@@ -2,14 +2,14 @@ import React, { useState, useCallback } from 'react'
 import {
   Upload, Trophy, Clock, Star, BookOpen,
   Gamepad2, Film, Tv, MonitorPlay, Book, ChevronDown,
-  ChevronUp, X as XIcon, BarChart2, Layers, Activity
+  ChevronUp, X as XIcon, BarChart2, Layers, Activity, Calendar
 } from 'lucide-react'
 import {
   parseXLSX, parseCSV, normalizeKeys, autoMapColumns, normalizeRating,
   normalizeValue, normalizeStatus, formatHours, formatNumber,
   detectCategory, normalizeString
 } from './utils/parsers'
-import { generalStats, averageRating, countByStatus, topByRating, groupCount, groupByMonth } from './utils/statistics'
+import { generalStats, averageRating, countByStatus, topByRating, groupCount, groupByMonth, extractAvailableYears, filterDataByYear } from './utils/statistics'
 import StatCard from './components/StatCard'
 import ProgressBar from './components/ProgressBar'
 import './index.css'
@@ -21,6 +21,7 @@ const CATEGORIES = [
   { key: 'series', label: '📺 Séries', icon: Tv },
   { key: 'animes', label: '⭐ Animes', icon: MonitorPlay },
   { key: 'livros', label: '📚 Livros', icon: Book },
+  { key: 'retrospectiva', label: '✨ Retrospectiva', icon: Trophy },
 ]
 
 /* ============================================
@@ -754,10 +755,105 @@ function LivrosDashboard({ data }) {
 }
 
 /* ============================================
+   RETROSPECTIVA (YEAR IN REVIEW)
+   ============================================ */
+function Retrospectiva({ data, year }) {
+  const stats = generalStats(data)
+  
+  // Aggregate genre data across all categories
+  const allGenres = []
+  let totalHorasJogadas = 0
+  let totalMinutosFilmes = 0
+  let totalEpisodiosSeries = 0
+  let totalEpisodiosAnimes = 0
+  let totalPaginasLivros = 0
+
+  for (const cat in data) {
+    if (Array.isArray(data[cat])) {
+      data[cat].forEach(item => {
+        if (item.genero && item.genero !== 'N/A') allGenres.push({ genero: item.genero })
+        if (cat === 'jogos' || cat === 'csv') totalHorasJogadas += Number(item.tempo_h || item.tempo || 0)
+        if (cat === 'filmes') totalMinutosFilmes += Number(item.duracao || item.duracao_min || 0)
+        if (cat === 'series') totalEpisodiosSeries += Number(item.episodios || 0)
+        if (cat === 'animes') totalEpisodiosAnimes += Number(item.episodios || 0)
+        if (cat === 'livros') totalPaginasLivros += Number(item.paginas || 0)
+      })
+    }
+  }
+
+  const topGenres = groupCount(allGenres, 'genero').slice(0, 5)
+
+  return (
+    <div className="space-y-8 fade-in">
+      <div className="text-center py-10 bg-gradient-to-br from-purple-900/40 to-slate-900 rounded-3xl border border-purple-500/20 shadow-xl shadow-purple-900/20">
+        <h2 className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-4">
+          Retrospectiva {year === 'all' ? 'Geral' : year}
+        </h2>
+        <p className="text-slate-400 max-w-2xl mx-auto text-lg">
+          Um resumo épico de tudo que você consumiu e as estatísticas que definiram o seu ano de entretenimento.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-slate-900/60 p-6 rounded-2xl border border-slate-700/50 flex flex-col items-center justify-center text-center">
+          <Gamepad2 className="w-10 h-10 text-purple-400 mb-3" />
+          <span className="text-3xl font-bold text-white mb-1">{formatHours(totalHorasJogadas)}</span>
+          <span className="text-sm text-slate-400">Horas Jogadas</span>
+        </div>
+        <div className="bg-slate-900/60 p-6 rounded-2xl border border-slate-700/50 flex flex-col items-center justify-center text-center">
+          <Film className="w-10 h-10 text-pink-400 mb-3" />
+          <span className="text-3xl font-bold text-white mb-1">{(totalMinutosFilmes / 60).toFixed(1)}h</span>
+          <span className="text-sm text-slate-400">Filmes Assistidos</span>
+        </div>
+        <div className="bg-slate-900/60 p-6 rounded-2xl border border-slate-700/50 flex flex-col items-center justify-center text-center">
+          <Tv className="w-10 h-10 text-cyan-400 mb-3" />
+          <span className="text-3xl font-bold text-white mb-1">{formatNumber(totalEpisodiosSeries + totalEpisodiosAnimes)}</span>
+          <span className="text-sm text-slate-400">Eps. de Séries/Animes</span>
+        </div>
+        <div className="bg-slate-900/60 p-6 rounded-2xl border border-slate-700/50 flex flex-col items-center justify-center text-center">
+          <BookOpen className="w-10 h-10 text-emerald-400 mb-3" />
+          <span className="text-3xl font-bold text-white mb-1">{formatNumber(totalPaginasLivros)}</span>
+          <span className="text-sm text-slate-400">Páginas Lidas</span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <BarChartWidget data={topGenres} dataKey="count" labelKey="name" title="🌌 Seus Gêneros Favoritos" color="#a78bfa" />
+        <div className="bg-slate-900/50 rounded-xl p-6 border border-slate-700/50 flex flex-col justify-center">
+           <h4 className="text-lg font-semibold text-white mb-4 text-center">Resumo da Obra</h4>
+           <div className="space-y-4">
+             <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+               <span className="text-slate-400">Total de Obras Consumidas</span>
+               <span className="text-white font-bold">{stats.totalItems}</span>
+             </div>
+             <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+               <span className="text-slate-400">Obras Finalizadas</span>
+               <span className="text-emerald-400 font-bold">{stats.totalFinished}</span>
+             </div>
+             <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+               <span className="text-slate-400">Taxa de Conclusão</span>
+               <span className="text-blue-400 font-bold">{stats.completionRate.toFixed(1)}%</span>
+             </div>
+             <div className="flex justify-between items-center pb-2">
+               <span className="text-slate-400">Média Geral de Notas</span>
+               <div className="flex items-center gap-1">
+                 <Star className="w-4 h-4 text-amber-400 fill-current" />
+                 <span className="text-amber-400 font-bold">{stats.avgRating.toFixed(1)}</span>
+               </div>
+             </div>
+           </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ============================================
    COMPONENTE PRINCIPAL APP
    ============================================ */
 export default function App() {
   const [activeTab, setActiveTab] = useState('all')
+  const [selectedYear, setSelectedYear] = useState('all')
   const [fileData, setFileData] = useState(null)
   const [fileName, setFileName] = useState('')
   const [isDragOver, setIsDragOver] = useState(false)
@@ -780,13 +876,20 @@ export default function App() {
       const finalData = {}
       for (const sheet in parsed) {
         const normalized = normalizeKeys(parsed[sheet])
-        const category = autoMapColumns(normalized, detectCategory(normalized))
-        finalData[sheet] = category
+        const detectedCat = detectCategory(normalized)
+        const mappedData = autoMapColumns(normalized, detectedCat)
+        
+        let finalKey = sheet
+        if (sheet === 'CSV' && detectedCat !== 'desconhecido') {
+          finalKey = detectedCat
+        }
+        finalData[finalKey] = mappedData
       }
 
       setFileData(finalData)
       setFileName(file.name)
       setActiveTab('all')
+      setSelectedYear('all')
     } catch (err) {
       console.error(err)
       alert('Erro ao processar arquivo: ' + err.message)
@@ -831,13 +934,17 @@ export default function App() {
     )
   }
 
+  const availableYears = extractAvailableYears(fileData)
+  const filteredData = selectedYear === 'all' ? fileData : filterDataByYear(fileData, selectedYear)
+
   const currentTabContent = () => {
-    if (activeTab === 'all') return <DashboardGeneral data={fileData} />
-    if (activeTab === 'jogos') return <JogosDashboard data={fileData} />
-    if (activeTab === 'filmes') return <FilmesDashboard data={fileData} />
-    if (activeTab === 'series') return <SeriesDashboard data={fileData} />
-    if (activeTab === 'animes') return <AnimesDashboard data={fileData} />
-    if (activeTab === 'livros') return <LivrosDashboard data={fileData} />
+    if (activeTab === 'all') return <DashboardGeneral data={filteredData} />
+    if (activeTab === 'jogos') return <JogosDashboard data={filteredData} />
+    if (activeTab === 'filmes') return <FilmesDashboard data={filteredData} />
+    if (activeTab === 'series') return <SeriesDashboard data={filteredData} />
+    if (activeTab === 'animes') return <AnimesDashboard data={filteredData} />
+    if (activeTab === 'livros') return <LivrosDashboard data={filteredData} />
+    if (activeTab === 'retrospectiva') return <Retrospectiva data={filteredData} year={selectedYear} />
   }
 
   return (
@@ -845,44 +952,63 @@ export default function App() {
       {/* NAVBAR */}
       <nav className="bg-slate-900/80 border-b border-slate-800 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-2">
-              <Trophy className="w-6 h-6 text-purple-400" />
-              <span className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                Entertainment Dashboard
-              </span>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between py-3 gap-3">
+            <div className="flex items-center justify-between w-full sm:w-auto">
+              <div className="flex items-center gap-2">
+                <Trophy className="w-6 h-6 text-purple-400" />
+                <span className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                  Entertainment Dashboard
+                </span>
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-slate-500 hidden sm:inline max-w-[200px] truncate" title={fileName}>
-                {fileName}
-              </span>
-              <button
-                onClick={() => { setFileData(null); setFileName(''); setActiveTab('all') }}
-                className="text-slate-400 hover:text-white transition-colors flex items-center gap-1 text-sm"
-              >
-                <XIcon className="w-4 h-4" /> Novo arquivo
-              </button>
+            <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-4">
+              {availableYears.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-slate-400" />
+                  <select
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(e.target.value)}
+                    className="bg-slate-800 text-white text-sm rounded-lg border border-slate-700 px-3 py-1.5 focus:outline-none focus:border-purple-500"
+                  >
+                    <option value="all">Todos os Anos</option>
+                    {availableYears.map(y => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-slate-500 hidden md:inline max-w-[200px] truncate" title={fileName}>
+                  {fileName}
+                </span>
+                <button
+                  onClick={() => { setFileData(null); setFileName(''); setActiveTab('all'); setSelectedYear('all') }}
+                  className="text-slate-400 hover:text-white transition-colors flex items-center gap-1 text-sm bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-700/50 hover:bg-slate-800"
+                >
+                  <XIcon className="w-4 h-4" /> Novo
+                </button>
+              </div>
             </div>
           </div>
           {/* TABS */}
-          <div className="flex items-center gap-1 overflow-x-auto">
+          <div className="flex items-center gap-1 overflow-x-auto pb-1 hide-scrollbar">
             {CATEGORIES.map((cat) => {
               const Icon = cat.icon
-              const hasData = cat.key === 'all' || fileData[cat.key]
+              const hasData = cat.key === 'all' || cat.key === 'retrospectiva' || fileData[cat.key]
               return (
                 <button
                   key={cat.key}
                   onClick={() => hasData && setActiveTab(cat.key)}
-                  disabled={!hasData && cat.key !== 'all'}
+                  disabled={!hasData}
                   className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-all duration-200
                     ${activeTab === cat.key
-                      ? 'text-purple-400 border-purple-400'
+                      ? (cat.key === 'retrospectiva' ? 'text-amber-400 border-amber-400' : 'text-purple-400 border-purple-400')
                       : hasData
                         ? 'text-slate-400 border-transparent hover:text-slate-200'
                         : 'text-slate-600 border-transparent cursor-not-allowed opacity-40'
                     }`}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className={`w-4 h-4 ${activeTab === cat.key && cat.key === 'retrospectiva' ? 'text-amber-400' : ''}`} />
                   {cat.label}
                 </button>
               )

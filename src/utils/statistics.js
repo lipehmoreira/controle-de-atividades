@@ -133,6 +133,56 @@ function parseMonth(monthLabel) {
   return y * 12 + m
 }
 
+export function extractAvailableYears(data) {
+  const years = new Set()
+  for (const cat in data) {
+    if (Array.isArray(data[cat])) {
+      data[cat].forEach(item => {
+        const dStr = item.data || item.assistido_em || item.date || item.terminado_em || item.concluido_em || ''
+        if (dStr) {
+          let date = new Date(dStr)
+          if (!isNaN(date.getTime())) {
+            years.add(date.getFullYear())
+          } else {
+            const parts = String(dStr).split('/')
+            if (parts.length === 2) {
+              years.add(Number(parts[1]))
+            } else if (parts.length === 3) {
+              years.add(Number(parts[2]))
+            }
+          }
+        }
+      })
+    }
+  }
+  return Array.from(years).filter(y => !isNaN(y) && y > 1900 && y < 2100).sort((a,b) => b - a)
+}
+
+export function filterDataByYear(data, year) {
+  const filtered = {}
+  for (const cat in data) {
+    if (Array.isArray(data[cat])) {
+      filtered[cat] = data[cat].filter(item => {
+        const dStr = item.data || item.assistido_em || item.date || item.terminado_em || item.concluido_em || ''
+        if (!dStr) return false // se não tem data, não tem como filtrar, ou assume true? Vamos ocultar se não bate com o ano
+        let itemYear = null
+        let date = new Date(dStr)
+        if (!isNaN(date.getTime())) {
+          itemYear = date.getFullYear()
+        } else {
+          const parts = String(dStr).split('/')
+          if (parts.length === 2) itemYear = Number(parts[1])
+          else if (parts.length === 3) itemYear = Number(parts[2])
+        }
+        return itemYear === Number(year)
+      })
+    } else {
+      filtered[cat] = data[cat]
+    }
+  }
+  return filtered
+}
+
 /**
  * Estatísticas gerais combinadas de todas as categorias.
  */
