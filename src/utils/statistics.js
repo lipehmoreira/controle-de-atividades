@@ -138,7 +138,7 @@ export function extractAvailableYears(data) {
   for (const cat in data) {
     if (Array.isArray(data[cat])) {
       data[cat].forEach(item => {
-        const dStr = item.data || item.assistido_em || item.date || item.terminado_em || item.concluido_em || ''
+        const dStr = item.data || item.assistido_em || item.date || item.terminado_em || item.concluido_em || item.ano || item.year || ''
         if (dStr) {
           let date = new Date(dStr)
           if (!isNaN(date.getTime())) {
@@ -149,6 +149,8 @@ export function extractAvailableYears(data) {
               years.add(Number(parts[1]))
             } else if (parts.length === 3) {
               years.add(Number(parts[2]))
+            } else if (!isNaN(Number(dStr)) && dStr.toString().length === 4) {
+              years.add(Number(dStr))
             }
           }
         }
@@ -163,7 +165,7 @@ export function filterDataByYear(data, year) {
   for (const cat in data) {
     if (Array.isArray(data[cat])) {
       filtered[cat] = data[cat].filter(item => {
-        const dStr = item.data || item.assistido_em || item.date || item.terminado_em || item.concluido_em || ''
+        const dStr = item.data || item.assistido_em || item.date || item.terminado_em || item.concluido_em || item.ano || item.year || ''
         if (!dStr) return false // se não tem data, não tem como filtrar, ou assume true? Vamos ocultar se não bate com o ano
         let itemYear = null
         let date = new Date(dStr)
@@ -173,6 +175,7 @@ export function filterDataByYear(data, year) {
           const parts = String(dStr).split('/')
           if (parts.length === 2) itemYear = Number(parts[1])
           else if (parts.length === 3) itemYear = Number(parts[2])
+          else if (!isNaN(Number(dStr)) && dStr.toString().length === 4) itemYear = Number(dStr)
         }
         return itemYear === Number(year)
       })

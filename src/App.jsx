@@ -27,35 +27,10 @@ const CATEGORIES = [
 /* ============================================
    COMPONENTE DE UPLOAD
    ============================================ */
-function WelcomeScreen({ onUpload }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-20">
-      <div className="w-24 h-24 rounded-3xl bg-purple-500/10 flex items-center justify-center mb-6 border border-purple-500/20">
-        <Trophy className="w-12 h-12 text-purple-400" />
-      </div>
-      <h2 className="text-3xl font-bold text-white mb-3">Dashboard de Entretenimento</h2>
-      <p className="text-slate-400 max-w-md text-center mb-8 leading-relaxed">
-        Faça upload da sua planilha de controle de atividades e descubra estatísticas
-        incríveis sobre seus jogos, filmes, séries, animes e livros.
-      </p>
-      <button
-        onClick={onUpload}
-        className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500
-                 text-white font-semibold rounded-xl transition-all duration-300 hover:scale-105
-                 flex items-center gap-3 shadow-lg shadow-purple-500/20"
-      >
-        <Upload className="w-5 h-5" />
-        Carregar Planilha
-      </button>
-      <p className="text-slate-500 text-sm mt-4">Suporte: .xlsx (múltiplas abas) ou .csv</p>
-    </div>
-  )
-}
-
-function UploadZone({ onFileSelect, onDragOver, onDragLeave, onDrop }) {
+function WelcomeUpload({ onFileSelect, onDragOver, onDragLeave, onDrop }) {
   return (
     <div
-      className="file-upload-zone mx-8 my-6 rounded-2xl p-12 text-center cursor-pointer border-2 border-dashed"
+      className="flex flex-col items-center justify-center py-20 mx-8 my-6 rounded-3xl border-2 border-dashed border-slate-700/50 hover:border-purple-500/50 transition-colors cursor-pointer bg-slate-900/20 hover:bg-slate-900/40 fade-in"
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
@@ -71,15 +46,13 @@ function UploadZone({ onFileSelect, onDragOver, onDragLeave, onDrop }) {
           if (file) onFileSelect(file)
         }}
       />
-      <div className="flex flex-col items-center gap-3">
-        <div className="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20">
-          <Upload className="w-8 h-8 text-purple-400" />
-        </div>
-        <div>
-          <p className="text-white font-medium text-lg">Arraste seu arquivo aqui</p>
-          <p className="text-slate-400 text-sm mt-1">ou clique para selecionar (.xlsx / .csv)</p>
-        </div>
+      <div className="w-24 h-24 rounded-3xl bg-purple-500/10 flex items-center justify-center mb-6 border border-purple-500/20">
+        <Upload className="w-12 h-12 text-purple-400" />
       </div>
+      <h2 className="text-3xl font-bold text-white mb-3">Dashboard de Entretenimento</h2>
+      <p className="text-slate-400 max-w-md text-center mb-8 leading-relaxed">
+        Clique aqui ou arraste o arquivo da sua planilha para iniciar (.xlsx / .csv).
+      </p>
     </div>
   )
 }
@@ -377,7 +350,7 @@ function JogosDashboard({ data }) {
     nota: normalizeRating(item.nota || item.rating || item.Nota),
     tempo_h: Number(normalizeValue(item.tempo_h || item.tempo || item.horas_jogadas || item.horas || item.Tempo || 0)),
     status: normalizeStatus(item.status || item.estado),
-    nome: normalizeString(item.nome || item.jogo || item.name || item.titulo || item.Jogo || 'Sem nome'),
+    nome: normalizeString(item.nome || item.jogo || item.name || item.titulo || item.Jogo || Object.values(item)[0] || 'Sem nome'),
     plataforma: normalizeString(item.plataforma || item.plataformas || item.Plataforma || item.Platform || 'N/A'),
     genero: normalizeString(item.genero || item.generos || item.gênero || item.gêneros || item.Gênero || 'N/A'),
     dificuldade: normalizeString(item.dificuldade || item.Dificuldade || 'N/A'),
@@ -693,7 +666,7 @@ function LivrosDashboard({ data }) {
   const normalizedItems = items.map(item => ({
     ...item,
     nota: normalizeRating(item.nota || item.rating || item.Nota),
-    nome: normalizeString(item.nome || item.livro || item.name || item.titulo || 'Sem nome'),
+    nome: normalizeString(item.nome || item.filme || item.serie || item.anime || item.livro || item.name || item.titulo || Object.values(item)[0] || 'Sem nome'),
     autor: normalizeString(item.autor || item.autora || item.Author || 'N/A'),
     paginas: Number(normalizeValue(item.paginas || item.páginas || item.Pages || item.num_paginas || item.total_paginas || 0)),
     modo_leitura: normalizeString(item.modo_leitura || item.modo || item.formato || item.Leitura || item.format || item['Mídia'] || item.midia || 'N/A'),
@@ -768,25 +741,56 @@ function Retrospectiva({ data, year }) {
   let totalEpisodiosAnimes = 0
   let totalPaginasLivros = 0
 
+  let jogosData = []
+  let filmesData = []
+  let seriesData = []
+  let animesData = []
+  let livrosData = []
+
   for (const cat in data) {
     if (Array.isArray(data[cat])) {
       data[cat].forEach(item => {
         if (item.genero && item.genero !== 'N/A') allGenres.push({ genero: item.genero })
-        if (cat === 'jogos' || cat === 'csv') totalHorasJogadas += Number(item.tempo_h || item.tempo || 0)
-        if (cat === 'filmes') totalMinutosFilmes += Number(item.duracao || item.duracao_min || 0)
-        if (cat === 'series') totalEpisodiosSeries += Number(item.episodios || 0)
-        if (cat === 'animes') totalEpisodiosAnimes += Number(item.episodios || 0)
-        if (cat === 'livros') totalPaginasLivros += Number(item.paginas || 0)
+        if (cat === 'jogos') { totalHorasJogadas += Number(normalizeValue(item.tempo_h || item.tempo || item.horas_jogadas || item.horas || 0)); jogosData.push(item) }
+        if (cat === 'filmes') { totalMinutosFilmes += Number(normalizeValue(item.duracao || item.duracao_min || 0)); filmesData.push(item) }
+        if (cat === 'series') { totalEpisodiosSeries += Number(normalizeValue(item.episodios || 0)); seriesData.push(item) }
+        if (cat === 'animes') { totalEpisodiosAnimes += Number(normalizeValue(item.episodios || 0)); animesData.push(item) }
+        if (cat === 'livros') { totalPaginasLivros += Number(normalizeValue(item.paginas || 0)); livrosData.push(item) }
       })
     }
   }
 
   const topGenres = groupCount(allGenres, 'genero').slice(0, 5)
 
+  const renderTopObras = (items, title, Icon, colorClass) => {
+    const top = topByRating(items, 5)
+    if (top.length === 0) return null
+    return (
+      <div className="bg-slate-900/50 rounded-xl p-6 border border-slate-700/50">
+        <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+          <Icon className={`w-5 h-5 ${colorClass}`} /> {title}
+        </h4>
+        <div className="space-y-3">
+          {top.map((item, idx) => (
+            <div key={idx} className="flex justify-between items-center border-b border-slate-800/50 pb-2 last:border-0 last:pb-0">
+              <span className="text-slate-300 font-medium truncate pr-2" title={item.nome || item.titulo || item.name || Object.values(item)[0]}>
+                {normalizeString(item.nome || item.titulo || item.name || Object.values(item)[0] || 'Sem Nome').substring(0, 30)}
+              </span>
+              <div className="flex items-center gap-1 shrink-0">
+                <Star className="w-4 h-4 text-amber-400 fill-current" />
+                <span className="text-amber-400 font-bold">{normalizeRating(item.nota || item.rating || item.Nota)}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="space-y-8 fade-in">
-      <div className="text-center py-10 bg-gradient-to-br from-purple-900/40 to-slate-900 rounded-3xl border border-purple-500/20 shadow-xl shadow-purple-900/20">
-        <h2 className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-4">
+    <div className="space-y-12 fade-in pb-12">
+      <div className="text-center py-12 px-4 bg-gradient-to-br from-purple-900/40 to-slate-900 rounded-3xl border border-purple-500/20 shadow-xl shadow-purple-900/20">
+        <h2 className="text-4xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-4 tracking-tight">
           Retrospectiva {year === 'all' ? 'Geral' : year}
         </h2>
         <p className="text-slate-400 max-w-2xl mx-auto text-lg">
@@ -795,32 +799,51 @@ function Retrospectiva({ data, year }) {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-slate-900/60 p-6 rounded-2xl border border-slate-700/50 flex flex-col items-center justify-center text-center">
-          <Gamepad2 className="w-10 h-10 text-purple-400 mb-3" />
-          <span className="text-3xl font-bold text-white mb-1">{formatHours(totalHorasJogadas)}</span>
-          <span className="text-sm text-slate-400">Horas Jogadas</span>
-        </div>
-        <div className="bg-slate-900/60 p-6 rounded-2xl border border-slate-700/50 flex flex-col items-center justify-center text-center">
-          <Film className="w-10 h-10 text-pink-400 mb-3" />
-          <span className="text-3xl font-bold text-white mb-1">{(totalMinutosFilmes / 60).toFixed(1)}h</span>
-          <span className="text-sm text-slate-400">Filmes Assistidos</span>
-        </div>
-        <div className="bg-slate-900/60 p-6 rounded-2xl border border-slate-700/50 flex flex-col items-center justify-center text-center">
-          <Tv className="w-10 h-10 text-cyan-400 mb-3" />
-          <span className="text-3xl font-bold text-white mb-1">{formatNumber(totalEpisodiosSeries + totalEpisodiosAnimes)}</span>
-          <span className="text-sm text-slate-400">Eps. de Séries/Animes</span>
-        </div>
-        <div className="bg-slate-900/60 p-6 rounded-2xl border border-slate-700/50 flex flex-col items-center justify-center text-center">
-          <BookOpen className="w-10 h-10 text-emerald-400 mb-3" />
-          <span className="text-3xl font-bold text-white mb-1">{formatNumber(totalPaginasLivros)}</span>
-          <span className="text-sm text-slate-400">Páginas Lidas</span>
+        {totalHorasJogadas > 0 && (
+          <div className="bg-slate-900/60 p-6 rounded-2xl border border-slate-700/50 flex flex-col items-center justify-center text-center">
+            <Gamepad2 className="w-10 h-10 text-purple-400 mb-3" />
+            <span className="text-3xl font-bold text-white mb-1">{formatHours(totalHorasJogadas)}</span>
+            <span className="text-sm text-slate-400">Horas Jogadas</span>
+          </div>
+        )}
+        {totalMinutosFilmes > 0 && (
+          <div className="bg-slate-900/60 p-6 rounded-2xl border border-slate-700/50 flex flex-col items-center justify-center text-center">
+            <Film className="w-10 h-10 text-pink-400 mb-3" />
+            <span className="text-3xl font-bold text-white mb-1">{(totalMinutosFilmes / 60).toFixed(1)}h</span>
+            <span className="text-sm text-slate-400">Filmes Assistidos</span>
+          </div>
+        )}
+        {(totalEpisodiosSeries + totalEpisodiosAnimes) > 0 && (
+          <div className="bg-slate-900/60 p-6 rounded-2xl border border-slate-700/50 flex flex-col items-center justify-center text-center">
+            <Tv className="w-10 h-10 text-cyan-400 mb-3" />
+            <span className="text-3xl font-bold text-white mb-1">{formatNumber(totalEpisodiosSeries + totalEpisodiosAnimes)}</span>
+            <span className="text-sm text-slate-400">Eps. de Séries/Animes</span>
+          </div>
+        )}
+        {totalPaginasLivros > 0 && (
+          <div className="bg-slate-900/60 p-6 rounded-2xl border border-slate-700/50 flex flex-col items-center justify-center text-center">
+            <BookOpen className="w-10 h-10 text-emerald-400 mb-3" />
+            <span className="text-3xl font-bold text-white mb-1">{formatNumber(totalPaginasLivros)}</span>
+            <span className="text-sm text-slate-400">Páginas Lidas</span>
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-6">
+        <h3 className="text-2xl font-bold text-white border-b border-slate-800 pb-2">Melhores do Ano por Categoria</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {renderTopObras(jogosData, "Top Jogos", Gamepad2, "text-purple-400")}
+          {renderTopObras(filmesData, "Top Filmes", Film, "text-pink-400")}
+          {renderTopObras(seriesData, "Top Séries", Tv, "text-cyan-400")}
+          {renderTopObras(animesData, "Top Animes", MonitorPlay, "text-indigo-400")}
+          {renderTopObras(livrosData, "Top Livros", Book, "text-emerald-400")}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <BarChartWidget data={topGenres} dataKey="count" labelKey="name" title="🌌 Seus Gêneros Favoritos" color="#a78bfa" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <BarChartWidget data={topGenres} dataKey="count" labelKey="name" title="🌌 Gêneros Mais Consumidos" color="#a78bfa" />
         <div className="bg-slate-900/50 rounded-xl p-6 border border-slate-700/50 flex flex-col justify-center">
-           <h4 className="text-lg font-semibold text-white mb-4 text-center">Resumo da Obra</h4>
+           <h4 className="text-lg font-bold text-white mb-4 text-center">Resumo da Obra</h4>
            <div className="space-y-4">
              <div className="flex justify-between items-center border-b border-slate-800 pb-2">
                <span className="text-slate-400">Total de Obras Consumidas</span>
@@ -876,14 +899,28 @@ export default function App() {
       const finalData = {}
       for (const sheet in parsed) {
         const normalized = normalizeKeys(parsed[sheet])
-        const detectedCat = detectCategory(normalized)
+        let detectedCat = detectCategory(normalized)
+        
+        // Se a detecção falhar, tenta pelo nome da aba
+        if (detectedCat === 'desconhecido') {
+          const s = sheet.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+          if (s.includes('jogo') || s.includes('game')) detectedCat = 'jogos'
+          else if (s.includes('filme') || s.includes('movie')) detectedCat = 'filmes'
+          else if (s.includes('serie')) detectedCat = 'series'
+          else if (s.includes('anime')) detectedCat = 'animes'
+          else if (s.includes('livro') || s.includes('book')) detectedCat = 'livros'
+        }
+
         const mappedData = autoMapColumns(normalized, detectedCat)
         
-        let finalKey = sheet
-        if (sheet === 'CSV' && detectedCat !== 'desconhecido') {
-          finalKey = detectedCat
+        let finalKey = (detectedCat !== 'desconhecido') ? detectedCat : sheet.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '')
+        
+        // Merge data if the key already exists (e.g., two sheets mapping to the same category)
+        if (finalData[finalKey]) {
+          finalData[finalKey] = [...finalData[finalKey], ...mappedData]
+        } else {
+          finalData[finalKey] = mappedData
         }
-        finalData[finalKey] = mappedData
       }
 
       setFileData(finalData)
@@ -923,8 +960,7 @@ export default function App() {
             </span>
           </div>
         </nav>
-        <WelcomeScreen onUpload={() => document.getElementById('fileInput')?.click()} />
-        <UploadZone
+        <WelcomeUpload
           onFileSelect={handleFileSelect}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}

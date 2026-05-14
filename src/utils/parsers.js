@@ -190,46 +190,50 @@ export function autoMapColumns(rows, category) {
 
   const mappings = {
     jogos: {
-      nome: ['nome', 'jogo', 'game', 'titulo', 'título', 'name', 'title'],
+      nome: ['nome', 'jogo', 'game', 'titulo', 'título', 'name', 'title', 'nome_do_jogo', 'obra'],
       plataforma: ['plataforma', 'plataformas', 'platform', 'console'],
       genero: ['genero', 'gênero', 'generos', 'gêneros', 'genero_principal', 'tipo', 'genre'],
       status: ['status', 'estado', 'situação', 'situacao', 'progresso'],
       tempo_h: ['tempo', 'horas', 'tempo_h', 'tempo_total', 'horas_jogadas', 'duration'],
       dificuldade: ['dificuldade', 'dificil', 'difficulty', 'hard'],
-      nota: ['nota', 'rating', 'avaliação', 'avaliacao', 'score', 'nota_final', 'nota10']
+      nota: ['nota', 'rating', 'avaliação', 'avaliacao', 'score', 'nota_final', 'nota10'],
+      data: ['data', 'ano', 'year', 'concluido', 'terminado', 'date', 'conclusao', 'finalizado']
     },
     filmes: {
-      nome: ['nome', 'filme', 'movie', 'titulo', 'título', 'name', 'title'],
+      nome: ['nome', 'filme', 'movie', 'titulo', 'título', 'name', 'title', 'nome_do_filme', 'obra'],
       direcao: ['direção', 'direcao', 'diretor', 'direção', 'director', 'directed_by'],
       genero: ['genero', 'gênero', 'generos', 'gêneros', 'genre'],
       duracao: ['duração', 'duracao', 'duracao_min', 'duration', 'runtime', 'duração_minutos'],
       nota: ['nota', 'rating', 'avaliação', 'avaliacao', 'score', 'nota10'],
-      assistido_em: ['assistido_em', 'assistido', 'data', 'date', 'watched_in', 'when', 'ano', 'mes']
+      assistido_em: ['assistido_em', 'assistido', 'data', 'date', 'watched_in', 'when', 'ano', 'mes', 'year']
     },
     series: {
-      nome: ['nome', 'série', 'serie', 'series', 'titulo', 'título', 'name', 'title'],
+      nome: ['nome', 'série', 'serie', 'series', 'titulo', 'título', 'name', 'title', 'nome_da_serie', 'obra'],
       temporada: ['temporada', 'season', 'temporada_num', 'num_temporada'],
       episodios: ['episódios', 'episodios', 'episodes', 'num_episodios', 'total_episodios'],
       genero: ['genero', 'gênero', 'generos', 'gêneros', 'genre'],
       status: ['status', 'estado', 'situação', 'situacao', 'progresso'],
-      nota: ['nota', 'rating', 'avaliação', 'avaliacao', 'score', 'nota10']
+      nota: ['nota', 'rating', 'avaliação', 'avaliacao', 'score', 'nota10'],
+      data: ['data', 'ano', 'year', 'concluido', 'terminado', 'date', 'assistido']
     },
     animes: {
-      nome: ['nome', 'anime', 'name', 'title', 'titulo', 'título'],
+      nome: ['nome', 'anime', 'name', 'title', 'titulo', 'título', 'nome_do_anime', 'obra'],
       temporada: ['temporada', 'season', 'num_temporada'],
       episodios: ['episódios', 'episodios', 'episodes', 'total_episodios', 'num_episodios'],
       genero: ['genero', 'gênero', 'generos', 'gêneros', 'genre'],
       status: ['status', 'estado', 'situação', 'situacao', 'progresso'],
-      nota: ['nota', 'rating', 'avaliação', 'avaliacao', 'score', 'nota10']
+      nota: ['nota', 'rating', 'avaliação', 'avaliacao', 'score', 'nota10'],
+      data: ['data', 'ano', 'year', 'concluido', 'terminado', 'date', 'assistido']
     },
     livros: {
-      nome: ['nome', 'livro', 'book', 'titulo', 'título', 'name', 'title'],
+      nome: ['nome', 'livro', 'book', 'titulo', 'título', 'name', 'title', 'nome_do_livro', 'obra'],
       autor: ['autor', 'autora', 'author', 'escritor'],
       paginas: ['páginas', 'paginas', 'pages', 'num_paginas', 'total_paginas'],
       modo_leitura: ['modo_leitura', 'modo', 'formato', 'leitura', 'reading_mode', 'format', 'tipo', 'mídia', 'midia'],
       genero: ['genero', 'gênero', 'generos', 'gêneros', 'genre', 'categoria'],
       status: ['status', 'estado', 'situação', 'situacao', 'progresso'],
-      nota: ['nota', 'rating', 'avaliação', 'avaliacao', 'score', 'nota10']
+      nota: ['nota', 'rating', 'avaliação', 'avaliacao', 'score', 'nota10'],
+      data: ['data', 'ano', 'year', 'concluido', 'terminado', 'date', 'lido']
     }
   }
 
@@ -260,11 +264,11 @@ export function autoMapColumns(rows, category) {
 export function detectCategory(rows) {
   if (!rows || rows.length === 0) return 'desconhecido'
   const keys = Object.keys(rows[0]).join(' ').toLowerCase()
-  if (keys.includes('plataforma') || keys.includes('dificuldade') || keys.includes('horas')) return 'jogos'
-  if (keys.includes('diretor') || keys.includes('direção') || keys.includes('duracao') || keys.includes('duração')) return 'filmes'
-  if (keys.includes('autor') || keys.includes('paginas') || keys.includes('páginas') || keys.includes('modo_leitura')) return 'livros'
+  if (keys.includes('plataforma') || keys.includes('dificuldade') || keys.includes('horas') || keys.includes('jogo') || keys.includes('game')) return 'jogos'
+  if (keys.includes('diretor') || keys.includes('direção') || keys.includes('duracao') || keys.includes('duração') || keys.includes('filme') || keys.includes('movie')) return 'filmes'
+  if (keys.includes('autor') || keys.includes('paginas') || keys.includes('páginas') || keys.includes('modo_leitura') || keys.includes('livro') || keys.includes('book')) return 'livros'
   if (keys.includes('episodios') || keys.includes('episódios') || keys.includes('temporada')) {
-    // Distinguir séries vs animes - heuristicamente por nome do arquivo ou presença de "anime"
+    if (keys.includes('anime') || keys.includes('animê')) return 'animes'
     return 'series'
   }
   return 'desconhecido'
